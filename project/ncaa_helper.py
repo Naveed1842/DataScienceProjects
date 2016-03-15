@@ -4,8 +4,37 @@
 # imports that we need
 import pandas as pd
 
+# Global Variables
+featured_columns = ['Wfgp', 'Wfgp3', 'Wdr', 'Wast', 'Wto', 'Wpf', 'Lfgp', 'Lfgp3', 'Ldr', 'Last', 'Lto', 'Lpf']
+target_column = "Win"
+beautiful_columns = ["Win Percentage", "Avg. Points Per Game", "Field Goal Percentage", 
+                     "Free Throw Percentage", "3-Pointer Percentage", "Avg. Offensive Rebounds Per Game", 
+                     "Avg. Defensive Rebounds Per Game", "Avg. Assists Per Game", "Avg. Turnovers Per Game",
+                     "Avg. Steals Per Game", "Avg. Blocks Per Game", "Avg. Personal Fouls Per Game"]
+seasonal_columns = ["wp", "ppg", "fgp", "ftp", "fgp3", "or", "dr", "ast", "to", "stl", "blk", "pf"]
+
 # Machine Learning Functions
 # ----------------------------------
+# This function acts as the main prediction function for a model
+def predict_game_outcome(team1, team2, season_data, model):
+    output = ""
+    feature_cols = ['fgp', 'fgp3', 'dr', 'ast', 'to', 'pf']
+    
+    team1_stats = list(map(list, season_data[season_data.Team_Name == team1][feature_cols].values))
+    team2_stats = list(map(list, season_data[season_data.Team_Name == team2][feature_cols].values))
+    
+    if len(team1_stats) == 0 or len(team2_stats) == 0:
+        return "Error: One of the teams you entered does not exist"
+    
+    team1_stats = team1_stats[0]
+    team2_stats = team2_stats[0]
+    
+    probs = model.predict_proba([team1_stats + team2_stats])
+    output += "There is a " + str(probs[0][1] * 100) + "% chance that " + team1 + " will win this game.\n"
+    output += "There is a " + str(probs[0][0] * 100) + "% chance that " + team2 + " will win this game.\n" 
+    
+    return output
+
 # This function is the main runner for converting season and tournament data
 def convert_season_tourney_data(games, tourney, team_season_data):
     game_data = _convert_game_data(games, team_season_data).reset_index()
@@ -100,6 +129,25 @@ def _calc_3s(joined_data):
 
 # Calculating Season Data Functions
 # ----------------------------------
+#
+# This function beautifies the columns
+def beautify_columns(seasonal_data):
+    return seasonal_data.rename(columns={
+            "wp": beautiful_columns[0],
+            "ppg": beautiful_columns[1],
+            "fgp": beautiful_columns[2],
+            "ftp": beautiful_columns[3],
+            "fgp3": beautiful_columns[4],
+            "or": beautiful_columns[5],
+            "dr": beautiful_columns[6],
+            "ast": beautiful_columns[7],
+            "to": beautiful_columns[8],
+            "stl": beautiful_columns[9],
+            "blk": beautiful_columns[10],
+            "pf": beautiful_columns[11]
+        })
+            
+            
 # This function is the main runner for converting team data and game data into seasonal data for a team
 def calc_year_data(year, detailed_season_results, teams):
     year_data = teams.copy(True)
@@ -109,18 +157,18 @@ def calc_year_data(year, detailed_season_results, teams):
     games_lost = games.groupby("Lteam")
     
     year_data["Season"] = year
-    year_data["Win_Percentage"] = _win_percent(games_won, games_lost)
-    year_data["Points_Per_Game"] = _points_per_game(games_won, games_lost)
-    year_data["Percent_FG_Made"] = _field_goals(games_won, games_lost)
-    year_data["Percent_FT_Made"] = _free_throws(games_won, games_lost)
-    year_data["Percent_3s_Made"] = _three_pointers(games_won, games_lost)
-    year_data["OR_Per_Game"] = _off_rebounds(games_won, games_lost)
-    year_data["DR_Per_Game"] = _def_rebounds(games_won, games_lost)
-    year_data["Assists_Per_Game"] = _assists(games_won, games_lost)
-    year_data["TO_Per_Game"] = _turnovers(games_won, games_lost)
-    year_data["Steals_Per_Game"] = _steals(games_won, games_lost)
-    year_data["Blocks_Per_Game"] = _blocks(games_won, games_lost)
-    year_data["Fouls_Per_Game"] = _fouls(games_won, games_lost)
+    year_data["wp"] = _win_percent(games_won, games_lost)
+    year_data["ppg"] = _points_per_game(games_won, games_lost)
+    year_data["fgp"] = _field_goals(games_won, games_lost)
+    year_data["ftp"] = _free_throws(games_won, games_lost)
+    year_data["fgp3"] = _three_pointers(games_won, games_lost)
+    year_data["or"] = _off_rebounds(games_won, games_lost)
+    year_data["dr"] = _def_rebounds(games_won, games_lost)
+    year_data["ast"] = _assists(games_won, games_lost)
+    year_data["to"] = _turnovers(games_won, games_lost)
+    year_data["stl"] = _steals(games_won, games_lost)
+    year_data["blk"] = _blocks(games_won, games_lost)
+    year_data["pf"] = _fouls(games_won, games_lost)
     
     # delete rows with None values (means they weren't in NCAA Division 1 that year)
     return year_data.dropna()
